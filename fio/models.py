@@ -34,6 +34,10 @@ class Transaction(models.Model):
     bank_transaction_id = models.BigIntegerField(unique=True)
     comment = models.CharField(max_length=200, null=True, blank=True)
 
+    @property
+    def uploaded_to_buxfer(self):
+        return self.buxfertransaction.pk is not None
+
 
 class BuxferTransaction(models.Model):
     buxfer_id = models.BigIntegerField(unique=True, null=True, blank=True)

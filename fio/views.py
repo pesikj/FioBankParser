@@ -27,7 +27,7 @@ class IndexView(SingleTableView):
 class BuxferTransactionTableView(SingleTableView):
     template_name = 'buxfer_transaction_table.html'
     model = models.BuxferTransaction
-    table_class = tables.TransactionTable
+    table_class = tables.BuxferTransactionTable
 
     def get_context_data(self, **kwargs):
         coontext = super().get_context_data()

@@ -6,7 +6,7 @@ class TransactionTable(tables.Table):
     class Meta:
         model = models.Transaction
         template_name = "tables/table.html"
-        fields = ("transaction_date", "amount", )
+        fields = ("transaction_date", "amount", "uploaded_to_buxfer")
         order_by = '-transaction_date'
 
 

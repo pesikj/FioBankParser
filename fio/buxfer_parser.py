@@ -62,7 +62,7 @@ def download_transaction_from_buxfer(username, password, start_date, end_date):
                     for res in results:
                         res = res.replace("Bank ID: ", "")
                         try:
-                            bank_transaction = models.Transaction.objects.get(pk=int(res))
+                            bank_transaction = models.Transaction.objects.filter(bank_transaction_id=int(res)).first()
                             transaction_record.bank_transaction = bank_transaction
                         except models.Transaction.DoesNotExist as err:
                             print(err)
