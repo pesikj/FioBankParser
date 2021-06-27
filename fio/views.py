@@ -20,7 +20,7 @@ class IndexView(SingleTableView):
         if form.is_valid():
             date_from = form.cleaned_data['date_from']
             date_to = form.cleaned_data['date_to']
-            fio_parser.copy_transaction_from_buxfer(bank_profile.fio_bank_token, date_from, date_to)
+            fio_parser.copy_transaction_from_bank(bank_profile.fio_bank_token, date_from, date_to)
         return HttpResponseRedirect("/")
 
 
