@@ -4,5 +4,10 @@ from . import views
 
 urlpatterns = [
     path('', views.IndexView.as_view(), name='index'),
+    path('bank-table', views.BankTransactionTableView.as_view(), name='bank_table'),
+    path('bank-detail/<int:pk>', views.BankTransactionDetailView.as_view(), name='bank_detail'),
     path('buxfer-table', views.BuxferTransactionTableView.as_view(), name='buxfer_table'),
+    path('buxfer-load', views.BuxferLoadDataView.as_view(), name='buxfer_load'),
+    path('bank-load', views.BankLoadDataView.as_view(), name='bank_load'),
+    path('buxfer-send-single', views.SendSingleTransactionToBuxferView.as_view(), name='buxfer_send_single'),
 ]

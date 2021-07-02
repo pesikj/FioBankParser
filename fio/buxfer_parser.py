@@ -28,6 +28,26 @@ COLUMN_NAMES_MAPPING = {
 }
 
 
+TRANSACTION_TYPES_MAPPING = {
+    "Poplatek - platební karta": "expense",
+    "Platba v jiné měně": "expense",
+    "Inkaso": "expense",
+    "Platba v hotovosti": "expense",
+    "Platba převodem uvnitř banky": "expense",
+    "Platba kartou - příjem": "refund",
+    "Dobití kreditu mobilního telefonu": "expense",
+    "Příjem v hotovosti": "income",
+    "Platba kartou": "expense",
+    "Vklad pokladnou": "income",
+    "Bezhotovostní příjem": "income",
+    "Příjem převodem uvnitř banky": "income",
+    "Bezhotovostní platba": "expense",
+    "Poplatek": "expense",
+    "Okamžitá odchozí platba": "expense",
+    "Okamžitá příchozí platba": "income"
+}
+
+
 def login_to_buxfer(username, password):
     base = "https://www.buxfer.com/api"
     url = base + "/login?userid=" + username + "&password=" + password
@@ -71,3 +91,30 @@ def download_transaction_from_buxfer(username, password, start_date, end_date):
                     transaction_record.save()
                 except IntegrityError as err:
                     print(err)
+
+
+def convert_transaction_for_buxfer(transaction: models.Transaction):
+    dict_transaction_buxfer = {"description": f"{transaction.description}; Bank ID: {transaction.bank_transaction_id}"}
+    transaction_type = TRANSACTION_TYPES_MAPPING[transaction.bank_transaction_type]
+    if transaction.from_account:
+        dict_transaction_buxfer["fromAccountId"] = transaction.from_account.buxfer_account_id
+    if transaction.to_account:
+        dict_transaction_buxfer["toAccountId"] = transaction.to_account.buxfer_account_id
+        if transaction.to_account.account_number == "Cash":
+            transaction_type = "transfer"
+    dict_transaction_buxfer["type"] = transaction_type
+    dict_transaction_buxfer["amount"] = "%8.2f" % abs(transaction.amount)
+    dict_transaction_buxfer["date"] = transaction.transaction_date
+    if transaction_type == "transfer":
+        tags = "Money Transfer"
+        dict_transaction_buxfer["tags"] = tags
+    return dict_transaction_buxfer
+
+
+def send_bank_transaction_to_buxfer(transaction: models.Transaction, bank_profile: models.BankProfile):
+    dict_transaction_buxfer = convert_transaction_for_buxfer(transaction)
+    token = login_to_buxfer(bank_profile.buxfer_username, bank_profile.buxfer_password)
+    url = "https://www.buxfer.com/api/add_transaction?token=" + token
+    response: Response = requests.post(url, dict_transaction_buxfer)
+    response_json = json.loads(response.text)
+    return response_json
