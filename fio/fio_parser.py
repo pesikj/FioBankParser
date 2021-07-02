@@ -35,7 +35,7 @@ def get_url(token, url_type="periods", date_from=None, date_to=None):
     return f"https://www.fio.cz/ib_api/rest/{url_type}/{token}/{date_from}/{date_to}/transactions.xml"
 
 
-def process_response(text):
+def process_response(bank_profile: models.BankProfile, text, user: models.User):
     root = ET.fromstring(text)
 
     for transaction in root[1]:
@@ -45,18 +45,22 @@ def process_response(text):
                 function = COLUMN_NAMES_MAPPING[column.tag][1]
                 setattr(tranaction_record, COLUMN_NAMES_MAPPING[column.tag][0], function(column.text))
         try:
+            tranaction_record.user = user
+            tranaction_record.bank_account = bank_profile.main_bank_account
             tranaction_record.save()
         except IntegrityError as err:
             print(err)
 
 
-def copy_transaction_from_bank(token, date_from: datetime, date_to: datetime):
+def copy_transaction_from_bank(bank_profile: models.BankProfile, date_from: datetime, date_to: datetime,
+                               user: models.User):
+    token = bank_profile.fio_bank_token
     if (date_to - date_from).days < MAX_BATCH_LENGTH:
         url = get_url(token, date_from=date_from, date_to=date_to)
         response = requests.get(url)
         if not response.ok:
             raise ValueError("Error getting data from bank.")
-        process_response(response.text)
+        process_response(bank_profile, response.text, user)
     else:
         actual_date_from = date_to + datetime.timedelta(days=-30)
         actual_date_to = date_to
@@ -66,7 +70,7 @@ def copy_transaction_from_bank(token, date_from: datetime, date_to: datetime):
             if not response.ok:
                 print(response.text)
                 raise ValueError("Error getting data from bank.")
-            process_response(response.text)
+            process_response(bank_profile, response.text, user)
             actual_date_to = actual_date_from + datetime.timedelta(days=-1)
             actual_date_from += datetime.timedelta(days=-60)
             time.sleep(60)

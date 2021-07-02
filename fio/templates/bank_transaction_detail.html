@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% load render_table from django_tables2 %}
+{% block content %}
+  <h2>Bank transaction</h2>
+
+  {{ object.transaction_date }} {{ object.description }} {{ object.amount }} {{ object.bank_transaction_id }}
+  <button type="button" class="btn btn-primary" id="btnSingleUpload">Upload</button>
+  <script src="https://cdn.jsdelivr.net/npm/js-cookie@rc/dist/js.cookie.min.js"></script>
+  <script>
+      const csrftoken = Cookies.get('csrftoken');
+      const buxferSendSingle = () => {
+          fetch("{% url 'buxfer_send_single' %}", {
+              headers: {
+                  "Content-Type": "application/json; charset=utf-8",  "X-CSRFToken": csrftoken,
+              },
+              method: 'POST',
+              body: JSON.stringify({
+                  transaction_id: {{ object.pk }},
+              })
+          });
+      };
+      document.getElementById("btnSingleUpload").addEventListener("click", buxferSendSingle);
+  </script>
+{% endblock %}

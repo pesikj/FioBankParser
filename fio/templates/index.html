@@ -2,26 +2,6 @@
 
 {% load render_table from django_tables2 %}
 {% block content %}
-  {% if user.is_authenticated %}
-    <form method="post">
-      {% csrf_token %}
 
-      {{ form.date_from.errors }}
-      <label for="{{ form.date_from.id_for_label }}">Date from:</label>
-      {{ form.date_from }}
-
-      {{ form.date_to.errors }}
-      <label for="{{ form.date_to.id_for_label }}">Date to:</label>
-      {{ form.date_to }}
-
-      <button type="submit" class="success button">Update</button>
-    </form>
-    Hi {{ user.username }}!
-    <p><a href="{% url 'logout' %}">Log Out</a></p>
-    {% render_table table %}
-  {% else %}
-    <p>You are not logged in</p>
-    <a href="{% url 'login' %}">Log In</a>
-  {% endif %}
 
 {% endblock %}
