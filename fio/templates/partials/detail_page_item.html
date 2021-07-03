@@ -1,0 +1,13 @@
+{% if value %}
+<div class="row">
+  <div class="col">
+    <b>{{ label }}</b>
+  </div>
+  <div class="col">
+    {{ value }}
+    {% if note %}
+    <i>({{ note }})</i>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

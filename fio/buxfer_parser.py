@@ -3,13 +3,13 @@ import decimal
 import json
 import math
 import re
-from django.core.exceptions import ObjectDoesNotExist
 
 import requests
 from django.db import IntegrityError
 from requests.models import Response
 
 from . import models
+from .models import AutoTaggingString
 
 COLUMN_NAMES_MAPPING = {
     "id": ("buxfer_id", lambda x: int(x)),
@@ -26,7 +26,6 @@ COLUMN_NAMES_MAPPING = {
     "isFutureDated": ("is_future_dated", lambda x: x),
     "isPending": ("is_pending", lambda x: int(x)),
 }
-
 
 TRANSACTION_TYPES_MAPPING = {
     "Poplatek - platební karta": "expense",
@@ -57,8 +56,9 @@ def login_to_buxfer(username, password):
     return token
 
 
-def download_transaction_from_buxfer(username, password, start_date, end_date):
-    token = login_to_buxfer(username, password)
+def download_transaction_from_buxfer(bank_profile: models.BankProfile, user: models.User, start_date: datetime,
+                                     end_date: datetime):
+    token = login_to_buxfer(bank_profile.buxfer_username, bank_profile.buxfer_password)
     dict_start_date = {"startDate": start_date, "endDate": end_date}
     url = "https://www.buxfer.com/api/transactions?token=" + token
     response: Response = requests.post(url, dict_start_date)
@@ -72,10 +72,19 @@ def download_transaction_from_buxfer(username, password, start_date, end_date):
         response_transactions_json = json.loads(response.text)
         for transaction_dict in response_transactions_json["response"]["transactions"]:
             transaction_record = models.BuxferTransaction()
+            transaction_record.user = user
             for column_name, value in transaction_dict.items():
                 if column_name in COLUMN_NAMES_MAPPING:
                     function = COLUMN_NAMES_MAPPING[column_name][1]
                     setattr(transaction_record, COLUMN_NAMES_MAPPING[column_name][0], function(value))
+                if column_name == "fromAccount":
+                    bank_accounts = models.BankAccount.objects.filter(buxfer_account_id=value["id"])
+                    if bank_accounts.count() == 1:
+                        transaction_record.from_account = bank_accounts.first()
+                if column_name == "toAccount":
+                    bank_accounts = models.BankAccount.objects.filter(buxfer_account_id=value["id"])
+                    if bank_accounts.count() == 1:
+                        transaction_record.to_account = bank_accounts.first()
                 if column_name == "description":
                     regex = re.compile(r"Bank ID: \d{9,12}")
                     results = regex.findall(value)
@@ -93,7 +102,7 @@ def download_transaction_from_buxfer(username, password, start_date, end_date):
                     print(err)
 
 
-def convert_transaction_for_buxfer(transaction: models.Transaction):
+def convert_transaction_for_buxfer(transaction: models.Transaction) -> dict:
     dict_transaction_buxfer = {"description": f"{transaction.description}; Bank ID: {transaction.bank_transaction_id}"}
     transaction_type = TRANSACTION_TYPES_MAPPING[transaction.bank_transaction_type]
     if transaction.from_account:
@@ -102,12 +111,26 @@ def convert_transaction_for_buxfer(transaction: models.Transaction):
         dict_transaction_buxfer["toAccountId"] = transaction.to_account.buxfer_account_id
         if transaction.to_account.account_number == "Cash":
             transaction_type = "transfer"
-    dict_transaction_buxfer["type"] = transaction_type
+    if transaction.from_account and transaction.to_account:
+        dict_transaction_buxfer["type"] = "transfer"
+    else:
+        dict_transaction_buxfer["type"] = transaction_type
     dict_transaction_buxfer["amount"] = "%8.2f" % abs(transaction.amount)
-    dict_transaction_buxfer["date"] = transaction.transaction_date
+    dict_transaction_buxfer["date"] = str(transaction.transaction_date)
     if transaction_type == "transfer":
         tags = "Money Transfer"
         dict_transaction_buxfer["tags"] = tags
+    auto_tagging_string = models.AutoTaggingString.objects.all()
+    for auto_tagging_string in auto_tagging_string:
+        if transaction.comment and auto_tagging_string.tagging_string in transaction.comment:
+            dict_transaction_buxfer["tags"] = auto_tagging_string.tag
+            break
+        if transaction.user_identification and auto_tagging_string.tagging_string in transaction.user_identification:
+            dict_transaction_buxfer["tags"] = auto_tagging_string.tag
+            break
+        if transaction.receiver_message and auto_tagging_string.tagging_string in transaction.receiver_message:
+            dict_transaction_buxfer["tags"] = auto_tagging_string.tag
+            break
     return dict_transaction_buxfer
 
 

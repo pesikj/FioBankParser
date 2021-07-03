@@ -98,8 +98,9 @@ class BuxferTransaction(models.Model):
     is_future_dated = models.BooleanField(null=True, blank=True)
     is_pending = models.BooleanField(null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    bank_account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, related_name="buxfer_transaction_account")
-    contra_bank_account = models.ForeignKey(BankAccount, on_delete=models.CASCADE,
+    from_account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, related_name="buxfer_transaction_account",
+                                     null=True, blank=True)
+    to_account = models.ForeignKey(BankAccount, on_delete=models.CASCADE,
                                             related_name="buxfer_transaction_contra_account", null=True, blank=True)
 
 
@@ -110,6 +111,11 @@ class BankProfile(models.Model):
     buxfer_password = models.CharField(max_length=100, blank=True)
     main_bank_account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, null=True, blank=True)
 
+
+class AutoTaggingString(models.Model):
+    tagging_string = models.CharField(max_length=100)
+    tag = models.CharField(max_length=100)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):

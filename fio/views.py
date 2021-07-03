@@ -31,6 +31,11 @@ class BankTransactionDetailView(DetailView):
     template_name = 'bank_transaction_detail.html'
     model = models.Transaction
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["buxfer_preview"] = json.dumps(buxfer_parser.convert_transaction_for_buxfer(self.object), indent=4)
+        return context
+
 
 class BankTransactionTableView(SingleTableView):
     template_name = 'bank_transaction_table.html'
@@ -56,13 +61,11 @@ class BuxferLoadDataView(FormView):
 
     def form_valid(self, form):
         bank_profile = models.BankProfile.objects.get(user=self.request.user)
-        username = bank_profile.buxfer_username
-        password = bank_profile.buxfer_password
         form = forms.LoadDataFromBankForm(self.request.POST)
         if form.is_valid():
             date_from = form.cleaned_data['date_from']
             date_to = form.cleaned_data['date_to']
-            buxfer_parser.download_transaction_from_buxfer(username, password, date_from, date_to)
+            buxfer_parser.download_transaction_from_buxfer(bank_profile, self.request.user, date_from, date_to)
         return HttpResponseRedirect("/")
 
 

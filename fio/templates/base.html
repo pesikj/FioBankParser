@@ -55,40 +55,43 @@
 <div class="container-fluid">
   <div class="row">
     <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-      <div class="position-sticky pt-3">
-        <ul class="nav flex-column">
-          <li class="nav-item">
-            <a class="nav-link active" aria-current="page" href="{% url 'index' %}">
-              <span data-feather="home"></span>
-              Bank Transactions
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'bank_table' %}">
-              <span data-feather="file"></span>
-              Bank transactions
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'buxfer_table' %}">
-              <span data-feather="shopping-cart"></span>
-              Buxfer transactions
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'buxfer_load' %}">
-              <span data-feather="shopping-cart"></span>
-              Buxfer data load
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'bank_load' %}">
-              <span data-feather="shopping-cart"></span>
-              Bank data load
-            </a>
-          </li>
-        </ul>
-      </div>
+      {% with url_name=request.resolver_match.url_name %}
+        <div class="position-sticky pt-3">
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link  {% if url_name == 'index' %}active{% endif %}" aria-current="page"
+                 href="{% url 'index' %}">
+                <span data-feather="home"></span>
+                Bank Transactions
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if url_name == 'bank_table' %}active{% endif %}" href="{% url 'bank_table' %}">
+                <span data-feather="file"></span>
+                Bank transactions
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if url_name == 'buxfer_table' %}active{% endif %}" href="{% url 'buxfer_table' %}">
+                <span data-feather="shopping-cart"></span>
+                Buxfer transactions
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if url_name == 'buxfer_load' %}active{% endif %}" href="{% url 'buxfer_load' %}">
+                <span data-feather="shopping-cart"></span>
+                Buxfer data load
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if url_name == 'bank_load' %}active{% endif %}" href="{% url 'bank_load' %}">
+                <span data-feather="shopping-cart"></span>
+                Bank data load
+              </a>
+            </li>
+          </ul>
+        </div>
+      {% endwith %}
     </nav>
 
     <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
