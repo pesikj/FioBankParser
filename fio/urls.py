@@ -10,4 +10,6 @@ urlpatterns = [
     path('buxfer-load', views.BuxferLoadDataView.as_view(), name='buxfer_load'),
     path('bank-load', views.BankLoadDataView.as_view(), name='bank_load'),
     path('buxfer-send-single', views.SendSingleTransactionToBuxferView.as_view(), name='buxfer_send_single'),
+    path('buxfer-detail/<int:pk>', views.BuxferTransactionDetailView.as_view(), name='buxfer_detail'),
+    path('upload-auto-tagging-strings', views.UploadAutoTaggingStringsView.as_view(), name="upload_auto_tagging_string")
 ]

@@ -11,6 +11,7 @@ from requests.models import Response
 from . import models
 from .models import AutoTaggingString
 
+MAX_BATCH_LENGTH = 35
 COLUMN_NAMES_MAPPING = {
     "id": ("buxfer_id", lambda x: int(x)),
     "description": ("description", lambda x: x),
@@ -56,9 +57,7 @@ def login_to_buxfer(username, password):
     return token
 
 
-def download_transaction_from_buxfer(bank_profile: models.BankProfile, user: models.User, start_date: datetime,
-                                     end_date: datetime):
-    token = login_to_buxfer(bank_profile.buxfer_username, bank_profile.buxfer_password)
+def download_batch_from_buxfer(start_date: datetime, end_date: datetime, token: str):
     dict_start_date = {"startDate": start_date, "endDate": end_date}
     url = "https://www.buxfer.com/api/transactions?token=" + token
     response: Response = requests.post(url, dict_start_date)
@@ -71,8 +70,13 @@ def download_transaction_from_buxfer(bank_profile: models.BankProfile, user: mod
         response: Response = requests.post(url, dict_page)
         response_transactions_json = json.loads(response.text)
         for transaction_dict in response_transactions_json["response"]["transactions"]:
-            transaction_record = models.BuxferTransaction()
+            transaction_record_query = models.BuxferTransaction.objects.filter(buxfer_id=transaction_dict["id"])
+            if transaction_record_query.count() == 1:
+                transaction_record = transaction_record_query.first()
+            else:
+                transaction_record = models.BuxferTransaction()
             transaction_record.user = user
+            transaction_record.raw_data = transaction_dict
             for column_name, value in transaction_dict.items():
                 if column_name in COLUMN_NAMES_MAPPING:
                     function = COLUMN_NAMES_MAPPING[column_name][1]
@@ -90,6 +94,7 @@ def download_transaction_from_buxfer(bank_profile: models.BankProfile, user: mod
                     results = regex.findall(value)
                     for res in results:
                         res = res.replace("Bank ID: ", "")
+                        transaction_record.buxfer_bank_transaction_id = int(res)
                         try:
                             bank_transaction = models.Transaction.objects.filter(bank_transaction_id=int(res)).first()
                             transaction_record.bank_transaction = bank_transaction
@@ -100,6 +105,21 @@ def download_transaction_from_buxfer(bank_profile: models.BankProfile, user: mod
                     transaction_record.save()
                 except IntegrityError as err:
                     print(err)
+
+
+def download_transaction_from_buxfer(bank_profile: models.BankProfile, user: models.User, date_from: datetime,
+                                     date_to: datetime):
+    token = login_to_buxfer(bank_profile.buxfer_username, bank_profile.buxfer_password)
+    if (date_to - date_from).days < MAX_BATCH_LENGTH:
+        download_batch_from_buxfer(date_from, date_to, token)
+    else:
+        actual_date_from = date_to + datetime.timedelta(days=-30)
+        actual_date_to = date_to
+        while actual_date_from > date_from:
+            download_batch_from_buxfer(actual_date_from, actual_date_to, token)
+            actual_date_to = actual_date_from + datetime.timedelta(days=-1)
+            actual_date_from += datetime.timedelta(days=-60)
+
 
 
 def convert_transaction_for_buxfer(transaction: models.Transaction) -> dict:
@@ -139,5 +159,7 @@ def send_bank_transaction_to_buxfer(transaction: models.Transaction, bank_profil
     token = login_to_buxfer(bank_profile.buxfer_username, bank_profile.buxfer_password)
     url = "https://www.buxfer.com/api/add_transaction?token=" + token
     response: Response = requests.post(url, dict_transaction_buxfer)
+    if response.status_code == "200":
+        transaction.uploaded_to_buxfer = True
     response_json = json.loads(response.text)
     return response_json

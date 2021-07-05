@@ -9,13 +9,14 @@ class TransactionTable(tables.Table):
     class Meta:
         model = models.Transaction
         template_name = "tables/table.html"
-        fields = ("bank_transaction_id", "transaction_date", "amount", "uploaded_to_buxfer")
+        fields = ("bank_transaction_id", "transaction_date", "amount", "uploaded_to_buxfer", "description")
         order_by = '-transaction_date'
 
 
 class BuxferTransactionTable(tables.Table):
+    buxfer_id = tables.LinkColumn('buxfer_detail', args=[A('pk')])
     class Meta:
         model = models.BuxferTransaction
         template_name = "tables/table.html"
-        fields = ("transaction_date", "amount", )
+        fields = ("buxfer_id", "transaction_date", "amount", "transaction_type", "tags")
         order_by = '-transaction_date'

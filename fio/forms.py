@@ -16,3 +16,7 @@ class LoadDataFromBankForm(forms.Form):
 class LoadDataFromBuxferForm(forms.Form):
     date_from = forms.DateField(initial=get_initial_dates()[0])
     date_to = forms.DateField(initial=get_initial_dates()[1])
+
+
+class UploadAutoTaggingStringsForm(forms.Form):
+    auto_tagging_string_file = forms.FileField()

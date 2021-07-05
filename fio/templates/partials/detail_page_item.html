@@ -4,9 +4,15 @@
     <b>{{ label }}</b>
   </div>
   <div class="col">
+    {% if url_name %}
+    <a href="{% url url_name url_arg %}">
+    {% endif %}
     {{ value }}
     {% if note %}
     <i>({{ note }})</i>
+    {% endif %}
+    {% if url_name %}
+    </a>
     {% endif %}
   </div>
 </div>

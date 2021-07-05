@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% load render_table from django_tables2 %}
+{% block content %}
+  <h2>Bank transaction</h2>
+
+  <div class="container">
+    <div class="row">
+      <div class="col">
+        {% include "partials/detail_page_item.html" with label="Buxfer ID" value=object.buxfer_id %}
+        {% include "partials/detail_page_item.html" with label="Transaction date" value=object.transaction_date %}
+        {% include "partials/detail_page_item.html" with label="Transaction type" value=object.transaction_type %}
+        {% include "partials/detail_page_item.html" with label="Amount" value=object.amount %}
+        {% include "partials/detail_page_item.html" with label="Expense amount" value=object.expense_amount %}
+        {% include "partials/detail_page_item.html" with label="Account ID" value=object.account_id note=object.account_name %}
+        {% include "partials/detail_page_item.html" with label="Status" value=object.status %}
+        {% include "partials/detail_page_item.html" with label="Bank transaction" value=object.bank_transaction.pk url_name="bank_detail" url_arg=object.bank_transaction.pk %}
+        {% include "partials/detail_page_item.html" with label="Bank transaction ID" value=object.buxfer_bank_transaction_id %}
+      </div>
+      <div class="col">
+        {% include "partials/detail_page_item_long.html" with label="Description" value=object.description %}
+        {% include "partials/detail_page_item_long.html" with label="Tags" value=object.tags %}
+        {% include "partials/detail_page_item_long.html" with label="Tag names" value=object.tag_names %}
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        {% include "partials/detail_page_item.html" with label="Account" value=object.from_account.account_number note=object.from_account.buxfer_account_id %}
+      </div>
+      <div class="col">
+        {% include "partials/detail_page_item.html" with label="Contra account" value=object.to_account.account_number note=object.to_account.buxfer_account_id %}
+      </div>
+    </div>
+    <pre>{{ object.raw_data_formatted }}</pre>
+  </div>
+
+{% endblock %}

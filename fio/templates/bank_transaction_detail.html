@@ -2,9 +2,8 @@
 
 {% load render_table from django_tables2 %}
 {% block content %}
-  <h2>Bank transaction</h2>
-
   <div class="container">
+    <h2>Bank transaction</h2>
     <div class="row">
       <div class="col">
         {% include "partials/detail_page_item.html" with label="Bank ID" value=object.bank_transaction_id %}
@@ -13,7 +12,7 @@
           {% include "partials/detail_page_item.html" with label="Amount" value=value %}
         {% endwith %}
         {% include "partials/detail_page_item.html" with label="Variable Code" value=object.variable_code %}
-
+        {% include "partials/detail_page_item.html" with label="Buxfer transaction" value=object.buxfertransaction.pk url_name="buxfer_detail" url_arg=object.buxfertransaction.pk %}
       </div>
       <div class="col">
         {% include "partials/detail_page_item_long.html" with label="Comment" value=object.comment %}
@@ -32,9 +31,9 @@
       </div>
     </div>
     <pre>{{ buxfer_preview }}</pre>
+    <button type="button" class="btn btn-primary" id="btnSingleUpload" {% if object.uploaded_to_buxfer %}disabled="disabled"{% endif %}>Upload</button>
   </div>
 
-  <button type="button" class="btn btn-primary" id="btnSingleUpload">Upload</button>
   <script src="https://cdn.jsdelivr.net/npm/js-cookie@rc/dist/js.cookie.min.js"></script>
   <script>
       const csrftoken = Cookies.get('csrftoken');

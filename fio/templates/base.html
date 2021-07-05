@@ -89,6 +89,12 @@
                 Bank data load
               </a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link {% if url_name == 'bank_load' %}active{% endif %}" href="{% url 'upload_auto_tagging_string' %}">
+                <span data-feather="shopping-cart"></span>
+                Upload auto tagging strings
+              </a>
+            </li>
           </ul>
         </div>
       {% endwith %}
