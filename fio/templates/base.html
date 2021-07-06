@@ -90,9 +90,15 @@
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if url_name == 'bank_load' %}active{% endif %}" href="{% url 'upload_auto_tagging_string' %}">
+              <a class="nav-link {% if url_name == 'upload_auto_tagging_string' %}active{% endif %}" href="{% url 'upload_auto_tagging_string' %}">
                 <span data-feather="shopping-cart"></span>
                 Upload auto tagging strings
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if url_name == 'match_transactions' %}active{% endif %}" href="{% url 'match_transactions' %}">
+                <span data-feather="shopping-cart"></span>
+                Match transactions
               </a>
             </li>
           </ul>

@@ -6,6 +6,7 @@ from . import models
 
 class TransactionTable(tables.Table):
     bank_transaction_id = tables.LinkColumn('bank_detail', args=[A('pk')])
+
     class Meta:
         model = models.Transaction
         template_name = "tables/table.html"
@@ -15,6 +16,7 @@ class TransactionTable(tables.Table):
 
 class BuxferTransactionTable(tables.Table):
     buxfer_id = tables.LinkColumn('buxfer_detail', args=[A('pk')])
+
     class Meta:
         model = models.BuxferTransaction
         template_name = "tables/table.html"

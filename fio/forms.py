@@ -20,3 +20,8 @@ class LoadDataFromBuxferForm(forms.Form):
 
 class UploadAutoTaggingStringsForm(forms.Form):
     auto_tagging_string_file = forms.FileField()
+
+
+class MatchTransactionsForm(forms.Form):
+    date_from = forms.DateField(initial=get_initial_dates()[0])
+    date_to = forms.DateField(initial=get_initial_dates()[1])

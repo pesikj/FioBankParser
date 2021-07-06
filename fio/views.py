@@ -1,9 +1,9 @@
 import json
 
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.db.models import Q, QuerySet
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
-from django.views import View
 from django.views.generic import DetailView, UpdateView
 from django.views.generic.edit import FormView
 from django_tables2 import SingleTableView
@@ -47,6 +47,13 @@ class BankTransactionTableView(SingleTableView):
     table_class = tables.TransactionTable
 
 
+class BankTransactionsNotUploadedTableView(BankTransactionTableView):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        queryset: QuerySet[models.Transaction]
+        return queryset.filter(buxfertransaction__isnull=True)
+
+
 class BuxferTransactionTableView(SingleTableView):
     template_name = 'buxfer_transaction_table.html'
     model = models.BuxferTransaction
@@ -56,6 +63,12 @@ class BuxferTransactionTableView(SingleTableView):
         coontext = super().get_context_data()
         coontext["form"] = forms.LoadDataFromBuxferForm()
         return coontext
+
+
+class BuxferUnmatchedTransactionTableView(BuxferTransactionTableView):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        return buxfer_parser.filter_unmatched_transactions(queryset)
 
 
 class BuxferLoadDataView(FormView):
@@ -78,6 +91,11 @@ class BankLoadDataView(FormView):
     form_class = forms.LoadDataFromBankForm
     success_url = '/'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data()
+        context["not_uploaded_count"] = models.Transaction.objects.filter(buxfertransaction__isnull=True).count()
+        return context
+
     def form_valid(self, form):
         bank_profile = models.BankProfile.objects.get(user=self.request.user)
         form = forms.LoadDataFromBankForm(self.request.POST)
@@ -91,6 +109,15 @@ class BankLoadDataView(FormView):
 class BuxferTransactionDetailView(DetailView):
     template_name = 'buxfer_transaction_detail.html'
     model = models.BuxferTransaction
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data()
+        potential_bank_transactions = buxfer_parser.find_potential_bank_transaction(self.object)
+        if potential_bank_transactions.count() == 0:
+            potential_bank_transactions = models.Transaction.objects.filter(
+                transaction_date=self.object.transaction_date)
+        context["table"] = tables.TransactionTable(potential_bank_transactions)
+        return context
 
 
 class SendSingleTransactionToBuxferView(UpdateView):
@@ -128,3 +155,30 @@ class UploadAutoTaggingStringsView(FormView):
             return self.form_valid(form)
         else:
             return self.form_invalid(form)
+
+
+class MatchTransactionsView(FormView):
+    template_name = 'match_transactions.html'
+    form_class = forms.MatchTransactionsForm
+    success_url = '/'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data()
+        context["unmatched_transactions"] = buxfer_parser.filter_unmatched_transactions(
+            models.BuxferTransaction.objects.all()).count()
+        return context
+
+    def form_valid(self, form):
+        form = forms.MatchTransactionsForm(self.request.POST)
+        if form.is_valid():
+            date_from = form.cleaned_data['date_from']
+            date_to = form.cleaned_data['date_to']
+            unmatched_transactions = models.BuxferTransaction.objects.filter(
+                Q(transaction_date__gt=date_from) & Q(transaction_date__lt=date_to))
+            unmatched_transactions = buxfer_parser.filter_unmatched_transactions(unmatched_transactions)
+            for buxfer_transaction in unmatched_transactions:
+                potential_transaction = buxfer_parser.find_potential_bank_transaction(buxfer_transaction)
+                if potential_transaction.count() == 1:
+                    buxfer_transaction.bank_transaction = potential_transaction.first()
+                    buxfer_transaction.save()
+        return HttpResponseRedirect("/")

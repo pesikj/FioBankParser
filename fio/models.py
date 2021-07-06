@@ -22,6 +22,7 @@ class BankAccount(models.Model):
     account_number = models.CharField(max_length=30)
     buxfer_account_id = models.BigIntegerField()
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    cash = models.BooleanField(default=False)
 
 
 class Transaction(models.Model):
@@ -91,25 +92,26 @@ class BuxferTransaction(models.Model):
     transaction_type = models.CharField(max_length=20, null=True, blank=True)
     amount = models.DecimalField(decimal_places=2, max_digits=12, null=True, blank=True)
     expense_amount = models.DecimalField(decimal_places=2, max_digits=12, null=True, blank=True)
-    account_id = models.BigIntegerField(null=True, blank=True)
-    account_name = models.CharField(max_length=200, null=True, blank=True)
+    buxfer_account_id = models.BigIntegerField(null=True, blank=True)
+    buxfer_account_name = models.CharField(max_length=200, null=True, blank=True)
     tags = models.CharField(max_length=200, null=True, blank=True)
     tag_names = models.CharField(max_length=200, null=True, blank=True)
     status = models.CharField(max_length=20, null=True, blank=True)
     is_future_dated = models.BooleanField(null=True, blank=True)
     is_pending = models.BooleanField(null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    from_account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, related_name="buxfer_transaction_account",
+    from_account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, related_name="buxfer_transaction_from_account",
                                      null=True, blank=True)
     to_account = models.ForeignKey(BankAccount, on_delete=models.CASCADE,
-                                            related_name="buxfer_transaction_contra_account", null=True, blank=True)
+                                            related_name="buxfer_transaction_to_account", null=True, blank=True)
+    account = models.ForeignKey(BankAccount, on_delete=models.CASCADE,
+                                   related_name="buxfer_transaction_account", null=True, blank=True)
     raw_data = models.JSONField(null=True, blank=True)
     buxfer_bank_transaction_id = models.BigIntegerField(unique=True, null=True, blank=True)
 
     @property
     def raw_data_formatted(self):
         return json.dumps(self.raw_data, indent=4)
-
 
 
 class BankProfile(models.Model):

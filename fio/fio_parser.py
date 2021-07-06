@@ -9,6 +9,7 @@ import requests
 from . import models
 
 MAX_BATCH_LENGTH = 35
+BANK_REQUEST_PAUSE = 30
 COLUMN_NAMES_MAPPING = {
     "column_0": ("transaction_date", lambda x: datetime.datetime.fromisoformat(x).date()),
     "column_1": ("amount", lambda x: decimal.Decimal(x)),
@@ -89,4 +90,4 @@ def copy_transaction_from_bank(bank_profile: models.BankProfile, date_from: date
             process_response(bank_profile, response.text, user)
             actual_date_to = actual_date_from + datetime.timedelta(days=-1)
             actual_date_from += datetime.timedelta(days=-60)
-            time.sleep(60)
+            time.sleep(BANK_REQUEST_PAUSE)
