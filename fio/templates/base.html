@@ -47,7 +47,11 @@
   </button>
   <div class="navbar-nav">
     <div class="nav-item text-nowrap">
-      <a class="nav-link px-3" href="{% url 'logout' %}">Sign out</a>
+      {% if user.is_authenticated %}
+        <a class="nav-link px-3" href="{% url 'logout' %}">Sign out</a>
+      {% else %}
+        <a class="nav-link px-3" href="{% url 'login' %}">Sign in</a>
+      {% endif %}
     </div>
   </div>
 </header>
@@ -99,6 +103,12 @@
               <a class="nav-link {% if url_name == 'match_transactions' %}active{% endif %}" href="{% url 'match_transactions' %}">
                 <span data-feather="shopping-cart"></span>
                 Match transactions
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if url_name == 'buxfer_upload' %}active{% endif %}" href="{% url 'buxfer_upload' %}">
+                <span data-feather="shopping-cart"></span>
+                Upload data to Buxfer
               </a>
             </li>
           </ul>

@@ -15,4 +15,5 @@ urlpatterns = [
     path('buxfer-detail/<int:pk>', views.BuxferTransactionDetailView.as_view(), name='buxfer_detail'),
     path('upload-auto-tagging-strings', views.UploadAutoTaggingStringsView.as_view(), name="upload_auto_tagging_string"),
     path('match-transactions', views.MatchTransactionsView.as_view(), name="match_transactions"),
+    path('buxfer-upload', views.BuxferUploadDataView.as_view(), name="buxfer_upload"),
 ]

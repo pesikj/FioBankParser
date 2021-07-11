@@ -13,6 +13,11 @@ class LoadDataFromBankForm(forms.Form):
     date_to = forms.DateField(initial=get_initial_dates()[1])
 
 
+class UploadDataToBuxferForm(forms.Form):
+    date_from = forms.DateField(initial=get_initial_dates()[0])
+    date_to = forms.DateField(initial=get_initial_dates()[1])
+
+
 class LoadDataFromBuxferForm(forms.Form):
     date_from = forms.DateField(initial=get_initial_dates()[0])
     date_to = forms.DateField(initial=get_initial_dates()[1])

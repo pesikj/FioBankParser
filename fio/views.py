@@ -51,7 +51,7 @@ class BankTransactionsNotUploadedTableView(BankTransactionTableView):
     def get_queryset(self):
         queryset = super().get_queryset()
         queryset: QuerySet[models.Transaction]
-        return queryset.filter(buxfertransaction__isnull=True)
+        return queryset.filter(buxfertransaction__isnull=True).order_by("-transaction_date")
 
 
 class BuxferTransactionTableView(SingleTableView):
@@ -103,6 +103,26 @@ class BankLoadDataView(FormView):
             date_from = form.cleaned_data['date_from']
             date_to = form.cleaned_data['date_to']
             fio_parser.copy_transaction_from_bank(bank_profile, date_from, date_to, self.request.user)
+        return HttpResponseRedirect("/")
+
+
+class BuxferUploadDataView(FormView):
+    template_name = 'buxfer_upload_data.html'
+    form_class = forms.UploadDataToBuxferForm
+    success_url = '/'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data()
+        context["not_uploaded_count"] = models.Transaction.objects.filter(buxfertransaction__isnull=True).count()
+        return context
+
+    def form_valid(self, form):
+        bank_profile = models.BankProfile.objects.get(user=self.request.user)
+        form = forms.LoadDataFromBankForm(self.request.POST)
+        if form.is_valid():
+            date_from = form.cleaned_data['date_from']
+            date_to = form.cleaned_data['date_to']
+            buxfer_parser.send_bank_transactions_from_period_to_buxfer(date_from, date_to, bank_profile)
         return HttpResponseRedirect("/")
 
 

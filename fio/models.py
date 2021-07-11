@@ -44,6 +44,7 @@ class Transaction(models.Model):
     bank_account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, related_name="bank_transaction_account")
     contra_bank_account = models.ForeignKey(BankAccount, on_delete=models.CASCADE,
                                             related_name="bank_transaction_contra_account", null=True, blank=True)
+    buxfer_response = models.JSONField(null=True, blank=True)
 
     @property
     def uploaded_to_buxfer(self):

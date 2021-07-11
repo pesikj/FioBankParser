@@ -62,6 +62,7 @@ def filter_unmatched_transactions(queryset: QuerySet[models.BuxferTransaction]) 
         Q(bank_transaction__isnull=True) & ~Q(from_account__cash=True) & ~Q(to_account__cash=True) & ~Q(
             account__cash=True))
 
+
 def find_potential_bank_transaction(transaction: models.BuxferTransaction) -> QuerySet[models.Transaction]:
     bank_transaction_query = models.Transaction.objects.filter(
         Q(transaction_date=transaction.transaction_date) & Q(
@@ -164,24 +165,39 @@ def convert_transaction_for_buxfer(transaction: models.Transaction) -> dict:
         dict_transaction_buxfer["tags"] = tags
     auto_tagging_string = models.AutoTaggingString.objects.all()
     for auto_tagging_string in auto_tagging_string:
-        if transaction.comment and auto_tagging_string.tagging_string in transaction.comment:
+        if transaction.comment and auto_tagging_string.tagging_string.lower() in transaction.comment.lower():
             dict_transaction_buxfer["tags"] = auto_tagging_string.tag
             break
-        if transaction.user_identification and auto_tagging_string.tagging_string in transaction.user_identification:
+        if transaction.user_identification \
+                and auto_tagging_string.tagging_string.lower() in transaction.user_identification.lower():
             dict_transaction_buxfer["tags"] = auto_tagging_string.tag
             break
-        if transaction.receiver_message and auto_tagging_string.tagging_string in transaction.receiver_message:
+        if transaction.receiver_message \
+                and auto_tagging_string.tagging_string.lower() in transaction.receiver_message.lower():
             dict_transaction_buxfer["tags"] = auto_tagging_string.tag
             break
     return dict_transaction_buxfer
 
 
-def send_bank_transaction_to_buxfer(transaction: models.Transaction, bank_profile: models.BankProfile):
+def send_bank_transaction_to_buxfer(transaction: models.Transaction, bank_profile: models.BankProfile, token=None):
     dict_transaction_buxfer = convert_transaction_for_buxfer(transaction)
-    token = login_to_buxfer(bank_profile.buxfer_username, bank_profile.buxfer_password)
+    if not token:
+        token = login_to_buxfer(bank_profile.buxfer_username, bank_profile.buxfer_password)
     url = "https://www.buxfer.com/api/add_transaction?token=" + token
     response: Response = requests.post(url, dict_transaction_buxfer)
-    if response.status_code == "200":
-        transaction.uploaded_to_buxfer = True
     response_json = json.loads(response.text)
+    if response.status_code == "200":
+        transaction.buxfer_response = response_json
+        transaction.save()
     return response_json
+
+
+def send_bank_transactions_from_period_to_buxfer(date_from: datetime.datetime, date_to: datetime.datetime,
+                                                 bank_profile: models.BankProfile):
+    transaction_list = models.Transaction.objects.filter(Q(transaction_date__gte=date_from)
+                                                         & Q(transaction_date__lte=date_to)
+                                                         & Q(buxfertransaction__isnull=True))
+    token = login_to_buxfer(bank_profile.buxfer_username, bank_profile.buxfer_password)
+    for transaction in transaction_list:
+        transaction: models.Transaction
+        send_bank_transaction_to_buxfer(transaction, bank_profile, token)
