@@ -121,7 +121,8 @@ class BankProfile(models.Model):
     buxfer_username = models.CharField(max_length=100, blank=True)
     buxfer_password = models.CharField(max_length=100, blank=True)
     main_bank_account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, null=True, blank=True)
-
+    buxfer_token = models.CharField(max_length=100, blank=True)
+    buxfer_token_created_on = models.DateTimeField(null=True, blank=True)
 
 class AutoTaggingString(models.Model):
     tagging_string = models.CharField(max_length=100)

@@ -31,12 +31,14 @@
       </div>
     </div>
     <pre>{{ buxfer_preview }}</pre>
+    <pre><div id="buxfer_response"></div></pre>
     <button type="button" class="btn btn-primary" id="btnSingleUpload" {% if object.uploaded_to_buxfer %}disabled="disabled"{% endif %}>Upload</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/js-cookie@rc/dist/js.cookie.min.js"></script>
   <script>
       const csrftoken = Cookies.get('csrftoken');
+      const buxfer_response_field = document.getElementById("buxfer_response");
       const buxferSendSingle = () => {
           fetch("{% url 'buxfer_send_single' %}", {
               headers: {
@@ -46,7 +48,9 @@
               body: JSON.stringify({
                   transaction_id: {{ object.pk }},
               })
-          });
+          })
+          .then(response => response.json())
+          .then(data => buxfer_response_field.innerHTML = JSON.stringify(data, undefined, 4));
       };
       document.getElementById("btnSingleUpload").addEventListener("click", buxferSendSingle);
   </script>
