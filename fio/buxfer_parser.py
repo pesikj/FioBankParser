@@ -3,13 +3,19 @@ import decimal
 import json
 import math
 import re
+import time
 
 import requests
 from django.db import IntegrityError
 from django.db.models import Q, QuerySet
+from django.utils import timezone
+from django.utils.timezone import make_aware
 from requests.models import Response
 
 from . import models
+from .fio_parser import BANK_REQUEST_PAUSE
+
+BANK_REQUEST_PAUSE = 10
 
 MAX_BATCH_LENGTH = 35
 COLUMN_NAMES_MAPPING = {
@@ -48,13 +54,19 @@ TRANSACTION_TYPES_MAPPING = {
 }
 
 
-def login_to_buxfer(username, password):
-    base = "https://www.buxfer.com/api"
-    url = base + "/login?userid=" + username + "&password=" + password
-    response: Response = requests.get(url)
-    response_json = json.loads(response.text)
-    token = response_json["response"]["token"]
-    return token
+def login_to_buxfer(bank_profile: models.BankProfile):
+    if not bank_profile.buxfer_token or not bank_profile.buxfer_token_created_on or \
+            bank_profile.buxfer_token_created_on < make_aware(datetime.datetime.now() + datetime.timedelta(days=-1),
+                                                              timezone.get_default_timezone()):
+        base = "https://www.buxfer.com/api"
+        url = base + "/login?userid=" + bank_profile.buxfer_username + "&password=" + bank_profile.buxfer_password
+        response: Response = requests.get(url)
+        response_json = json.loads(response.text)
+        token = response_json["response"]["token"]
+        bank_profile.buxfer_token = token
+        bank_profile.buxfer_token_created_on = datetime.datetime.now()
+        bank_profile.save()
+    return bank_profile.buxfer_token
 
 
 def filter_unmatched_transactions(queryset: QuerySet[models.BuxferTransaction]) -> QuerySet[models.BuxferTransaction]:
@@ -69,8 +81,11 @@ def find_potential_bank_transaction(transaction: models.BuxferTransaction) -> Qu
             buxfertransaction__isnull=True))
     if transaction.transaction_type == "expense":
         bank_transaction_query = bank_transaction_query.filter(amount=-transaction.amount)
-    else:
+    elif transaction.transaction_type == "income":
         bank_transaction_query = bank_transaction_query.filter(amount=transaction.amount)
+    else:
+        bank_transaction_query = bank_transaction_query\
+            .filter(Q(amount=transaction.amount) | Q(amount=-transaction.amount))
     return bank_transaction_query
 
 
@@ -82,12 +97,13 @@ def download_batch_from_buxfer(start_date: datetime, end_date: datetime, token: 
     transaction_count = int(response_json["response"]["numTransactions"])
     pages = math.ceil(transaction_count / 25) + 1
     for currPage in range(pages, 0, -1):
+        time.sleep(BANK_REQUEST_PAUSE)
         dict_page = dict_start_date
         dict_page["page"] = currPage
         response: Response = requests.post(url, dict_page)
         response_transactions_json = json.loads(response.text)
         for transaction_dict in response_transactions_json["response"]["transactions"]:
-            transaction_record_query = models.BuxferTransaction.objects.filter(buxfer_id=transaction_dict["id"])
+            transaction_record_query = models.BuxferTransaction.objects.filter(buxfer_id=int(transaction_dict["id"]))
             if transaction_record_query.count() == 1:
                 transaction_record = transaction_record_query.first()
             else:
@@ -98,7 +114,7 @@ def download_batch_from_buxfer(start_date: datetime, end_date: datetime, token: 
                 if column_name in COLUMN_NAMES_MAPPING:
                     function = COLUMN_NAMES_MAPPING[column_name][1]
                     setattr(transaction_record, COLUMN_NAMES_MAPPING[column_name][0], function(value))
-                elif column_name == "fromAccount":
+                if column_name == "fromAccount":
                     bank_accounts = models.BankAccount.objects.filter(buxfer_account_id=value["id"])
                     if bank_accounts.count() == 1:
                         transaction_record.from_account = bank_accounts.first()
@@ -133,7 +149,7 @@ def download_batch_from_buxfer(start_date: datetime, end_date: datetime, token: 
 
 def download_transaction_from_buxfer(bank_profile: models.BankProfile, user: models.User, date_from: datetime,
                                      date_to: datetime):
-    token = login_to_buxfer(bank_profile.buxfer_username, bank_profile.buxfer_password)
+    token = login_to_buxfer(bank_profile)
     if (date_to - date_from).days < MAX_BATCH_LENGTH:
         download_batch_from_buxfer(date_from, date_to, token, user)
     else:
@@ -182,11 +198,11 @@ def convert_transaction_for_buxfer(transaction: models.Transaction) -> dict:
 def send_bank_transaction_to_buxfer(transaction: models.Transaction, bank_profile: models.BankProfile, token=None):
     dict_transaction_buxfer = convert_transaction_for_buxfer(transaction)
     if not token:
-        token = login_to_buxfer(bank_profile.buxfer_username, bank_profile.buxfer_password)
+        token = login_to_buxfer(bank_profile)
     url = "https://www.buxfer.com/api/add_transaction?token=" + token
     response: Response = requests.post(url, dict_transaction_buxfer)
     response_json = json.loads(response.text)
-    if response.status_code == "200":
+    if response.status_code == 200:
         transaction.buxfer_response = response_json
         transaction.save()
     return response_json
@@ -196,8 +212,10 @@ def send_bank_transactions_from_period_to_buxfer(date_from: datetime.datetime, d
                                                  bank_profile: models.BankProfile):
     transaction_list = models.Transaction.objects.filter(Q(transaction_date__gte=date_from)
                                                          & Q(transaction_date__lte=date_to)
-                                                         & Q(buxfertransaction__isnull=True))
-    token = login_to_buxfer(bank_profile.buxfer_username, bank_profile.buxfer_password)
+                                                         & Q(buxfertransaction__isnull=True)
+                                                         & Q(buxfer_response__isnull=True))
+    token = login_to_buxfer(bank_profile)
     for transaction in transaction_list:
         transaction: models.Transaction
         send_bank_transaction_to_buxfer(transaction, bank_profile, token)
+        time.sleep(BANK_REQUEST_PAUSE)
