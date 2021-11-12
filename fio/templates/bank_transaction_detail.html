@@ -2,17 +2,45 @@
 
 {% load render_table from django_tables2 %}
 {% block content %}
-  <h2>Bank transaction</h2>
+  <div class="container">
+    <h2>Bank transaction</h2>
+    <div class="row">
+      <div class="col">
+        {% include "partials/detail_page_item.html" with label="Bank ID" value=object.bank_transaction_id %}
+        {% include "partials/detail_page_item.html" with label="Transaction date" value=object.transaction_date %}
+        {% with object.amount|stringformat:"i"|add:" "|add:object.currency as value %}
+          {% include "partials/detail_page_item.html" with label="Amount" value=value %}
+        {% endwith %}
+        {% include "partials/detail_page_item.html" with label="Variable Code" value=object.variable_code %}
+        {% include "partials/detail_page_item.html" with label="Buxfer transaction" value=object.buxfertransaction.pk url_name="buxfer_detail" url_arg=object.buxfertransaction.pk %}
+      </div>
+      <div class="col">
+        {% include "partials/detail_page_item_long.html" with label="Comment" value=object.comment %}
+        {% include "partials/detail_page_item_long.html" with label="User identification" value=object.user_identification %}
+        {% include "partials/detail_page_item_long.html" with label="Reciever message" value=object.receiver_message %}
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        {% include "partials/detail_page_item.html" with label="Account" value=object.bank_account.account_number note=object.bank_account.buxfer_account_id %}
+      </div>
+      <div class="col">
+        {% with object.contra_account|add:"/"|add:object.contra_account_bank_code as value %}
+          {% include "partials/detail_page_item.html" with label="Contra account" value=value note=object.contra_bank_account.buxfer_account_id %}
+        {% endwith %}
+      </div>
+    </div>
+    <pre>{{ buxfer_preview }}</pre>
+    <button type="button" class="btn btn-primary" id="btnSingleUpload" {% if object.uploaded_to_buxfer %}disabled="disabled"{% endif %}>Upload</button>
+  </div>
 
-  {{ object.transaction_date }} {{ object.description }} {{ object.amount }} {{ object.bank_transaction_id }}
-  <button type="button" class="btn btn-primary" id="btnSingleUpload">Upload</button>
   <script src="https://cdn.jsdelivr.net/npm/js-cookie@rc/dist/js.cookie.min.js"></script>
   <script>
       const csrftoken = Cookies.get('csrftoken');
       const buxferSendSingle = () => {
           fetch("{% url 'buxfer_send_single' %}", {
               headers: {
-                  "Content-Type": "application/json; charset=utf-8",  "X-CSRFToken": csrftoken,
+                  "Content-Type": "application/json; charset=utf-8", "X-CSRFToken": csrftoken,
               },
               method: 'POST',
               body: JSON.stringify({
