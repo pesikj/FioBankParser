@@ -1,7 +1,8 @@
+import datetime
 import json
 
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from django.db.models import Q, QuerySet
+from django.db.models import Q, QuerySet, Avg, F, Window, Sum
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.views.generic import DetailView, UpdateView
@@ -149,6 +150,15 @@ class SendSingleTransactionToBuxferView(UpdateView):
         return JsonResponse(response)
 
 
+class BuxferUpdateSingleTransactionView(UpdateView):
+    def post(self, request, *args, **kwargs):
+        buxfer_transaction_id = json.loads(request.body)["transaction_id"]
+        buxfer_tranaction = models.BuxferTransaction.objects.get(pk=buxfer_transaction_id)
+        bank_profile = models.BankProfile.objects.get(user=self.request.user)
+        response = buxfer_parser.update_bank_transaction_description(buxfer_tranaction, bank_profile)
+        return JsonResponse(response)
+
+
 class UploadAutoTaggingStringsView(FormView):
     form_class = forms.UploadAutoTaggingStringsForm
     template_name = 'upload_auto_tagging_strings.html'
@@ -202,3 +212,42 @@ class MatchTransactionsView(FormView):
                     buxfer_transaction.bank_transaction = potential_transaction.first()
                     buxfer_transaction.save()
         return HttpResponseRedirect("/")
+
+
+class AccountBalanceView(SingleTableView):
+    template_name = 'account_balance.html'
+    table_class = tables.AccountBalanceTable
+    success_url = '/'
+
+    def get_queryset(self):
+        return models.AccountBalance.objects.filter(~Q(buxfer_transaction_sum=F("bank_transaction_sum")))
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data()
+        context["form"] = forms.RecalculateAccountBalanceForm()
+        return context
+
+    def post(self, request, *args, **kwargs):
+        bank_profile = models.BankProfile.objects.get(user=request.user)
+        form = forms.RecalculateAccountBalanceForm(request.POST)
+        if form.is_valid():
+            date_from = form.cleaned_data['date_from']
+            date_to = form.cleaned_data['date_to']
+            models.AccountBalance.objects.all().delete()
+            current_date = date_from
+            while current_date <= date_to:
+                account_balance = models.AccountBalance(date=current_date, account=bank_profile.main_bank_account)
+                account_balance.calculate_balance()
+                current_date += datetime.timedelta(days=1)
+        return HttpResponseRedirect("/")
+
+
+class AccountBalanceDetailView(DetailView):
+    template_name = 'account_balance_detail.html'
+    model = models.AccountBalance
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data()
+        context["bank_transaction_table"] = tables.TransactionTable(data=self.object.get_bank_transactions())
+        context["buxfer_transaction_table"] = tables.BuxferTransactionTable(data=self.object.get_buxfer_transactions())
+        return context

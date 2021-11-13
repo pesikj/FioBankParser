@@ -22,3 +22,13 @@ class BuxferTransactionTable(tables.Table):
         template_name = "tables/table.html"
         fields = ("buxfer_id", "transaction_date", "amount", "transaction_type", "tags")
         order_by = '-transaction_date'
+
+
+class AccountBalanceTable(tables.Table):
+    date = tables.LinkColumn('account_balance_detail', args=[A('pk')])
+
+    class Meta:
+        model = models.AccountBalance
+        template_name = "tables/table.html"
+        fields = ("date", "buxfer_transaction_sum", "bank_transaction_sum")
+        order_by = 'date'

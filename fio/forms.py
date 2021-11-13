@@ -30,3 +30,8 @@ class UploadAutoTaggingStringsForm(forms.Form):
 class MatchTransactionsForm(forms.Form):
     date_from = forms.DateField(initial=get_initial_dates()[0])
     date_to = forms.DateField(initial=get_initial_dates()[1])
+
+
+class RecalculateAccountBalanceForm(forms.Form):
+    date_from = forms.DateField(initial="2014-04-01")
+    date_to = forms.DateField(initial="2015-01-01")

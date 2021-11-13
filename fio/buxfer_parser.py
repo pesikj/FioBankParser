@@ -208,6 +208,22 @@ def send_bank_transaction_to_buxfer(transaction: models.Transaction, bank_profil
     return response_json
 
 
+def update_bank_transaction_description(buxfer_transaction: models.BuxferTransaction, bank_profile: models.BankProfile,
+                                        token=None):
+    dict_transaction_buxfer = {"id": buxfer_transaction.buxfer_id, "description": buxfer_transaction.updated_description}
+    if not token:
+        token = login_to_buxfer(bank_profile)
+    url = "https://www.buxfer.com/api/transaction_edit?token=" + token
+    response: Response = requests.post(url, dict_transaction_buxfer)
+    response_json = json.loads(response.text)
+    if response.status_code == 200:
+        new_description = response_json["response"]["description"]
+        buxfer_transaction.description = new_description
+        buxfer_transaction.buxfer_update_response = response_json
+        buxfer_transaction.save()
+    return response_json
+
+
 def send_bank_transactions_from_period_to_buxfer(date_from: datetime.datetime, date_to: datetime.datetime,
                                                  bank_profile: models.BankProfile):
     transaction_list = models.Transaction.objects.filter(Q(transaction_date__gte=date_from)

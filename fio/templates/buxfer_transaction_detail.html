@@ -30,6 +30,7 @@
       </div>
       <div class="col">
         {% include "partials/detail_page_item.html" with label="To account" value=object.to_account.account_number note=object.to_account.buxfer_account_id %}
+        {% include "partials/detail_page_item_long.html" with label="Updated description" value=object.updated_description %}
       </div>
     </div>
     <pre>{{ object.raw_data_formatted }}</pre>
@@ -37,5 +38,27 @@
       {% render_table table %}
     {% endif %}
   </div>
+  <button type="button" class="btn btn-primary" id="btnUpdateDescription"
+          {% if object.description == object.updated_description %}disabled="disabled"{% endif %}>
+    Update description
+  </button>
 
+  <script src="https://cdn.jsdelivr.net/npm/js-cookie@rc/dist/js.cookie.min.js"></script>
+  <script>
+      const csrftoken = Cookies.get('csrftoken');
+      const buxferUpdateDescription = () => {
+          fetch("{% url 'buxfer_update_transaction' %}", {
+              headers: {
+                  "Content-Type": "application/json; charset=utf-8", "X-CSRFToken": csrftoken,
+              },
+              method: 'POST',
+              body: JSON.stringify({
+                  transaction_id: {{ object.pk }},
+              })
+          })
+              .then(response => response.json())
+              .then(data => buxfer_response_field.innerHTML = JSON.stringify(data, undefined, 4));
+      };
+      document.getElementById("btnUpdateDescription").addEventListener("click", buxferUpdateDescription);
+  </script>
 {% endblock %}
