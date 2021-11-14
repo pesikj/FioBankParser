@@ -34,4 +34,4 @@ class MatchTransactionsForm(forms.Form):
 
 class RecalculateAccountBalanceForm(forms.Form):
     date_from = forms.DateField(initial="2014-04-01")
-    date_to = forms.DateField(initial="2015-01-01")
+    date_to = forms.DateField(initial="2022-01-01")

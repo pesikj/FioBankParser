@@ -46,8 +46,9 @@ def process_response(bank_profile: models.BankProfile, text, user: models.User):
             if column.tag in COLUMN_NAMES_MAPPING:
                 function = COLUMN_NAMES_MAPPING[column.tag][1]
                 setattr(transaction_record, COLUMN_NAMES_MAPPING[column.tag][0], function(column.text))
+        transaction_record.bank_transaction_date = transaction_record.transaction_date
         if transaction_record.description:
-            date_regex_results = date_regex.findall(transaction_record.comment)
+            date_regex_results = date_regex.findall(transaction_record.description)
             for result in date_regex_results:
                 result: str
                 result_split = result.split(".")

@@ -76,9 +76,12 @@ def filter_unmatched_transactions(queryset: QuerySet[models.BuxferTransaction]) 
 
 
 def find_potential_bank_transaction(transaction: models.BuxferTransaction) -> QuerySet[models.Transaction]:
+    if transaction.transaction_type == "expense" and transaction.from_account and transaction.from_account.cash \
+            or transaction.transaction_type == "income" and transaction.to_account and transaction.to_account.cash:
+        return None
     bank_transaction_query = models.Transaction.objects.filter(
         Q(transaction_date=transaction.transaction_date) & Q(
-            buxfertransaction__isnull=True))
+            buxfertransaction__isnull=True) & Q())
     if transaction.transaction_type == "expense":
         bank_transaction_query = bank_transaction_query.filter(amount=-transaction.amount)
     elif transaction.transaction_type == "income":
@@ -134,13 +137,13 @@ def download_batch_from_buxfer(start_date: datetime, end_date: datetime, token: 
                             transaction_record.bank_transaction = bank_transaction
                         except models.Transaction.DoesNotExist as err:
                             print(err)
+            if transaction_record.buxfer_account_id:
+                transaction_record.account = models.BankAccount.objects.filter(
+                    buxfer_account_id=transaction_record.buxfer_account_id).first()
             if not transaction_record.bank_transaction:
                 bank_transaction_query = find_potential_bank_transaction(transaction_record)
                 if bank_transaction_query.count() > 0:
                     transaction_record.bank_transaction = bank_transaction_query.first()
-            if transaction_record.buxfer_account_id:
-                transaction_record.account = models.BankAccount.objects.filter(
-                    buxfer_account_id=transaction_record.buxfer_account_id).first()
             try:
                 transaction_record.save()
             except IntegrityError as err:

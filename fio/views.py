@@ -207,10 +207,17 @@ class MatchTransactionsView(FormView):
                 Q(transaction_date__gt=date_from) & Q(transaction_date__lt=date_to))
             unmatched_transactions = buxfer_parser.filter_unmatched_transactions(unmatched_transactions)
             for buxfer_transaction in unmatched_transactions:
-                potential_transaction = buxfer_parser.find_potential_bank_transaction(buxfer_transaction)
-                if potential_transaction.count() == 1:
-                    buxfer_transaction.bank_transaction = potential_transaction.first()
+                if buxfer_transaction.transaction_type == "expense" and buxfer_transaction.from_account \
+                        and buxfer_transaction.from_account.cash \
+                        or buxfer_transaction.transaction_type == "income" and buxfer_transaction.to_account \
+                        and buxfer_transaction.to_account.cash:
+                    buxfer_transaction.bank_transaction = None
                     buxfer_transaction.save()
+                else:
+                    potential_transaction = buxfer_parser.find_potential_bank_transaction(buxfer_transaction)
+                    if potential_transaction.count() == 1:
+                        buxfer_transaction.bank_transaction = potential_transaction.first()
+                        buxfer_transaction.save()
         return HttpResponseRedirect("/")
 
 
